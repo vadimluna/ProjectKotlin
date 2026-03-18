@@ -1,5 +1,8 @@
 package com.example.projectkotlin.di
 
+import com.example.projectkotlin.damain.model.PokemonRepository
+import com.example.projectkotlin.data.remote.PokeApi
+import com.example.projectkotlin.data.repository.PokemonRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,5 +23,17 @@ object AppModule {
             .baseUrl("https://pokeapi.co/api/v2/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+
+    @Provides
+    @Singleton
+    fun providePokeApi(retrofit: Retrofit): PokeApi {
+        return retrofit.create(PokeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun providePokemonRepository(api: PokeApi): PokemonRepository {
+        return PokemonRepositoryImpl(api)
     }
 }
