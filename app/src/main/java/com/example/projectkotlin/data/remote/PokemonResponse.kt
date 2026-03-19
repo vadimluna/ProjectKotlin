@@ -40,7 +40,7 @@ data class NamedResource(
 )
 
 data class Sprites(
-    @SerializedName("front_default") val frontDefault: String,
+    @SerializedName("front_default") val frontDefault: String?,
     val other: OtherSprites?
 )
 

@@ -1,10 +1,14 @@
 package com.example.projectkotlin.data.repository
 
+import android.util.Log
 import com.example.projectkotlin.damain.model.Pokemon
 import com.example.projectkotlin.damain.model.PokemonRepository
 import com.example.projectkotlin.damain.model.PokemonStat
 import com.example.projectkotlin.data.remote.PokeApi
 import com.example.projectkotlin.data.remote.PokemonDetailResponse
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
 
 class PokemonRepositoryImpl @Inject constructor(
@@ -12,9 +16,20 @@ class PokemonRepositoryImpl @Inject constructor(
 ) : PokemonRepository {
 
     override suspend fun getPokemonList(limit: Int, offset: Int): List<Pokemon> {
+        Log.d("PokeDebug", "1. Pidiendo lista base a la API...")
         val response = api.getPokemonList(limit, offset)
-        return response.results.map { resource ->
-            getPokemonDetail(resource.name)
+        Log.d("PokeDebug", "2. Lista base obtenida con ${response.results.size} pokemons. Pidiendo detalles...")
+
+        return coroutineScope {
+            val pokemons = response.results.map { resource ->
+                async {
+                    Log.d("PokeDebug", "-> Pidiendo detalle de: ${resource.name}")
+                    getPokemonDetail(resource.name)
+                }
+            }.awaitAll()
+
+            Log.d("PokeDebug", "3. ¡Todos los detalles descargados!")
+            pokemons
         }
     }
 
@@ -39,7 +54,8 @@ class PokemonRepositoryImpl @Inject constructor(
             id = response.id,
             name = response.name.replaceFirstChar { it.uppercase() },
             imageUrl = response.sprites.other?.officialArtwork?.frontDefault
-                ?: response.sprites.frontDefault,
+                ?: response.sprites.frontDefault
+                ?: "",
             types = response.types.map { it.type.name },
             height = response.height,
             weight = response.weight,
