@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.projectkotlin.ui.screens.splash.SplashScreen
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.projectkotlin.ui.screens.main.MainScreen
+import com.example.projectkotlin.ui.screens.main.MainViewModel
 import com.example.projectkotlin.ui.theme.ProjectKotlinTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -15,7 +17,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ProjectKotlinTheme {
-                SplashScreen()
+                val mainViewModel: MainViewModel = hiltViewModel()
+                MainScreen(viewModel = mainViewModel)
             }
         }
     }
