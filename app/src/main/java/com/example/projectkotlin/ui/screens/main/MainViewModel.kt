@@ -20,6 +20,9 @@ class MainViewModel @Inject constructor(
     val state: StateFlow<MainState> = _state.asStateFlow()
 
     private var allPokemons: List<Pokemon> = emptyList()
+    private var currentOffset = 0
+    private var isLoading = false
+    private var currentQuery = ""
 
     init {
         loadInitialPokemon()
@@ -29,7 +32,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = MainState.Loading
             try {
-                val pokemons = repository.getPokemonList(limit = 20, offset = 0)
+                val pokemons = repository.getPokemonList(limit = 20, offset = currentOffset)
                 allPokemons = pokemons
                 _state.value = MainState.Success(pokemons)
             } catch (e: Exception) {
@@ -38,18 +41,37 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private fun loadMorePokemon() {
+        if (isLoading || currentQuery.isNotBlank()) return
+
+        viewModelScope.launch {
+            isLoading = true
+            try {
+                currentOffset += 20
+                val newPokemons = repository.getPokemonList(limit = 20, offset = currentOffset)
+                allPokemons = allPokemons + newPokemons
+                _state.value = MainState.Success(allPokemons)
+            } catch (e: Exception) {
+
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     fun handleIntent(intent: MainIntent) {
         when (intent) {
             is MainIntent.LoadMore -> {
+                loadMorePokemon()
             }
             is MainIntent.Search -> {
-                val query = intent.query
-                if (query.isBlank()) {
+                currentQuery = intent.query
+                if (currentQuery.isBlank()) {
                     _state.value = MainState.Success(allPokemons)
                 } else {
                     val filteredList = allPokemons.filter { pokemon ->
-                        pokemon.name.contains(query, ignoreCase = true) ||
-                                pokemon.types.any { type -> type.contains(query, ignoreCase = true) }
+                        pokemon.name.contains(currentQuery, ignoreCase = true) ||
+                                pokemon.types.any { type -> type.contains(currentQuery, ignoreCase = true) }
                     }
                     _state.value = MainState.Success(filteredList)
                 }
