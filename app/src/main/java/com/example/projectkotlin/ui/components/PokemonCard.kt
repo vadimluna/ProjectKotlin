@@ -18,6 +18,7 @@ import com.example.projectkotlin.damain.model.Pokemon
 
 @Composable
 fun PokemonCard(pokemon: Pokemon, modifier: Modifier = Modifier) {
+    // esto es un comentario de vadim
     Card(
         modifier = modifier
             .fillMaxWidth()
