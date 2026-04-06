@@ -16,12 +16,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.projectkotlin.damain.model.Pokemon
 
 import com.example.projectkotlin.ui.components.PokemonCard
 import com.example.projectkotlin.ui.components.SearchBar
 
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(
+    onPokemonClick: (Pokemon) -> Unit,
+    viewModel: MainViewModel = hiltViewModel()
+) {
     val state by viewModel.state.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -42,7 +47,10 @@ fun MainScreen(viewModel: MainViewModel) {
             is MainState.Success -> {
                 LazyColumn(state = listState) {
                     items(currentState.pokemonList) { pokemon ->
-                        PokemonCard(pokemon = pokemon)
+                        PokemonCard(
+                            pokemon = pokemon,
+                            onClick = { onPokemonClick(pokemon) }
+                        )
                     }
                 }
 
