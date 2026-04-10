@@ -1,6 +1,6 @@
 package com.example.projectkotlin.ui.screens.splash
 
-import com.example.projectkotlin.damain.model.Pokemon
+import com.example.projectkotlin.domain.model.Pokemon
 
 sealed class SplashState {
     object Idle : SplashState()

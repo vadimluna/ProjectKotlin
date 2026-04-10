@@ -5,15 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.projectkotlin.navigation.NavRoutes
 import com.example.projectkotlin.ui.screens.detail.DetailScreen
 import com.example.projectkotlin.ui.screens.main.MainScreen
-import com.example.projectkotlin.ui.screens.main.MainViewModel
 import com.example.projectkotlin.ui.screens.splash.SplashScreen
 import com.example.projectkotlin.ui.theme.ProjectKotlinTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -35,32 +36,42 @@ class MainActivity : ComponentActivity() {
 fun PokeAppNavigation() {
     val navController = rememberNavController()
 
-    NavHost(navController = navController, startDestination = "splash") {
-        composable("splash") {
-            SplashScreen(onDataLoaded = {
-                navController.navigate("main") {
-                    popUpTo("splash") { inclusive = true }
-                }
-            })
-        }
+    NavHost(navController = navController, startDestination = NavRoutes.Splash.route) {
+        splashGraph(navController)
+        mainGraph(navController)
+        detailGraph(navController)
+    }
+}
 
-        composable("main") {
-            MainScreen(
-                onPokemonClick = { pokemon ->
-                    navController.navigate("detail/${pokemon.name}")
-                }
-            )
-        }
+fun NavGraphBuilder.splashGraph(navController: NavHostController) {
+    composable(NavRoutes.Splash.route) {
+        SplashScreen(onDataLoaded = {
+            navController.navigate(NavRoutes.Main.route) {
+                popUpTo(NavRoutes.Splash.route) { inclusive = true }
+            }
+        })
+    }
+}
 
-        composable(
-            route = "detail/{pokemonName}",
-            arguments = listOf(navArgument("pokemonName") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val pokemonName = backStackEntry.arguments?.getString("pokemonName") ?: ""
-            DetailScreen(
-                pokemonName = pokemonName,
-                onBackClick = { navController.popBackStack() }
-            )
-        }
+fun NavGraphBuilder.mainGraph(navController: NavHostController) {
+    composable(NavRoutes.Main.route) {
+        MainScreen(
+            onPokemonClick = { pokemonId ->
+                navController.navigate(NavRoutes.Detail.createRoute(pokemonId))
+            }
+        )
+    }
+}
+
+fun NavGraphBuilder.detailGraph(navController: NavHostController) {
+    composable(
+        route = NavRoutes.Detail.route,
+        arguments = listOf(navArgument("pokemonId") { type = NavType.IntType })
+    ) { backStackEntry ->
+        val pokemonId = backStackEntry.arguments?.getInt("pokemonId") ?: 0
+        DetailScreen(
+            pokemonId = pokemonId,
+            onBackClick = { navController.popBackStack() }
+        )
     }
 }

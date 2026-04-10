@@ -1,4 +1,4 @@
-package com.example.projectkotlin.damain.model
+package com.example.projectkotlin.domain.model
 
 data class Pokemon(
     val id: Int,

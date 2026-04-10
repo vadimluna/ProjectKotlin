@@ -12,19 +12,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.example.projectkotlin.damain.model.Pokemon
+import com.example.projectkotlin.domain.model.Pokemon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
-    pokemonName: String,
+    pokemonId: Int,
     onBackClick: () -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
 
-    LaunchedEffect(pokemonName) {
-        viewModel.processIntent(DetailIntent.LoadPokemonDetail(pokemonName))
+    LaunchedEffect(pokemonId) {
+        viewModel.processIntent(DetailIntent.LoadPokemonDetail(pokemonId))
     }
 
     Scaffold(
@@ -44,17 +44,24 @@ fun DetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (state) {
+            when (val currentState = state) {
+                is DetailState.Idle -> {
+                    // Do nothing
+                }
                 is DetailState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
                 is DetailState.Success -> {
-                    val pokemon = (state as DetailState.Success).pokemon
-                    PokemonDetailContent(pokemon)
+                    PokemonDetailContent(currentState.pokemon)
                 }
                 is DetailState.Error -> {
+                    val message = when (val error = currentState.error) {
+                        is DetailError.NetworkError -> "Error de red"
+                        is DetailError.NotFound -> "Pokémon no encontrado"
+                        is DetailError.Unknown -> error.message
+                    }
                     Text(
-                        text = "Error: ${(state as DetailState.Error).message}",
+                        text = "Error: $message",
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center)
                     )

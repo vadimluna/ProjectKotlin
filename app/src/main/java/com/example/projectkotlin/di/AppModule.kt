@@ -1,6 +1,6 @@
 package com.example.projectkotlin.di
 
-import com.example.projectkotlin.damain.model.PokemonRepository
+import com.example.projectkotlin.domain.model.PokemonRepository
 import com.example.projectkotlin.data.remote.PokeApi
 import com.example.projectkotlin.data.repository.PokemonRepositoryImpl
 import dagger.Module
@@ -10,7 +10,6 @@ import dagger.hilt.components.SingletonComponent
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Singleton
-
 
 @Module
 @InstallIn(SingletonComponent::class)

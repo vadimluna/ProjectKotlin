@@ -1,9 +1,9 @@
 package com.example.projectkotlin.data.repository
 
 import android.util.Log
-import com.example.projectkotlin.damain.model.Pokemon
-import com.example.projectkotlin.damain.model.PokemonRepository
-import com.example.projectkotlin.damain.model.PokemonStat
+import com.example.projectkotlin.domain.model.Pokemon
+import com.example.projectkotlin.domain.model.PokemonRepository
+import com.example.projectkotlin.domain.model.PokemonStat
 import com.example.projectkotlin.data.remote.PokeApi
 import com.example.projectkotlin.data.remote.PokemonDetailResponse
 import kotlinx.coroutines.async
@@ -18,23 +18,20 @@ class PokemonRepositoryImpl @Inject constructor(
     override suspend fun getPokemonList(limit: Int, offset: Int): List<Pokemon> {
         Log.d("PokeDebug", "1. Pidiendo lista base a la API...")
         val response = api.getPokemonList(limit, offset)
-        Log.d("PokeDebug", "2. Lista base obtenida con ${response.results.size} pokemons. Pidiendo detalles...")
+        Log.d("PokeDebug", "2. Lista obtenida con ${response.results.size} pokemons.")
 
         return coroutineScope {
-            val pokemons = response.results.map { resource ->
+            response.results.map { resource ->
                 async {
-                    Log.d("PokeDebug", "-> Pidiendo detalle de: ${resource.name}")
-                    getPokemonDetail(resource.name)
+                    val detail = api.getPokemonDetail(resource.name)
+                    mapToDomain(detail)
                 }
             }.awaitAll()
-
-            Log.d("PokeDebug", "3. ¡Todos los detalles descargados!")
-            pokemons
         }
     }
 
-    override suspend fun getPokemonDetail(name: String): Pokemon {
-        val response = api.getPokemonDetail(name)
+    override suspend fun getPokemonDetail(id: Int): Pokemon {
+        val response = api.getPokemonDetailById(id)
         return mapToDomain(response)
     }
 
@@ -54,15 +51,12 @@ class PokemonRepositoryImpl @Inject constructor(
             id = response.id,
             name = response.name.replaceFirstChar { it.uppercase() },
             imageUrl = response.sprites.other?.officialArtwork?.frontDefault
-                ?: response.sprites.frontDefault
-                ?: "",
+                ?: response.sprites.frontDefault ?: "",
             types = response.types.map { it.type.name },
             height = response.height,
             weight = response.weight,
             abilities = response.abilities.map { it.ability.name },
-            stats = response.stats.map {
-                PokemonStat(name = it.stat.name, value = it.baseStat)
-            }
+            stats = response.stats.map { PokemonStat(name = it.stat.name, value = it.baseStat) }
         )
     }
 }
