@@ -24,11 +24,19 @@ fun MainScreen(
     val listState = rememberLazyListState()
 
     Column(modifier = Modifier.fillMaxSize()) {
+        val availableTypes = if (state is MainState.Success) (state as MainState.Success).availableTypes else emptyList()
+        val selectedType = if (state is MainState.Success) (state as MainState.Success).selectedType else null
+
         SearchBar(
             query = searchQuery,
             onQueryChange = {
                 searchQuery = it
                 viewModel.handleIntent(MainIntent.Search(it))
+            },
+            availableTypes = availableTypes,
+            selectedType = selectedType,
+            onTypeSelect = { type ->
+                viewModel.handleIntent(MainIntent.FilterType(type))
             }
         )
 

@@ -60,3 +60,12 @@ data class FlavorTextEntry(
     @SerializedName("flavor_text") val flavorText: String,
     val language: NamedResource
 )
+
+
+data class TypeResponse(
+    val pokemon: List<TypePokemon>
+)
+
+data class TypePokemon(
+    val pokemon: NamedResource
+)

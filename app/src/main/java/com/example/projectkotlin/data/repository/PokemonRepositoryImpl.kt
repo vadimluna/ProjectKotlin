@@ -29,15 +29,29 @@ class PokemonRepositoryImpl @Inject constructor(
             }.awaitAll()
         }
     }
+    override suspend fun getPokemonsByType(type: String): List<Pokemon> {
+        val response = api.getPokemonsByType(type.lowercase())
+
+        val pokemonListToFetch = response.pokemon.take(50)
+
+        return coroutineScope {
+            pokemonListToFetch.map { typePokemon ->
+                async {
+                    val detail = api.getPokemonDetail(typePokemon.pokemon.name)
+                    mapToDomain(detail)
+                }
+            }.awaitAll()
+        }
+    }
 
     override suspend fun getPokemonDetail(id: Int): Pokemon {
-        val response = api.getPokemonDetailById(id)
+        val response = api.getPokemonDetail(id.toString())
         return mapToDomain(response)
     }
 
     override suspend fun getPokemonDescription(id: Int): String {
         return try {
-            val response = api.getPokemonSpecies(id)
+            val response = api.getPokemonSpecies(id.toString())
             response.flavorTextEntries
                 .firstOrNull { it.language.name == "en" || it.language.name == "es" }
                 ?.flavorText?.replace("\n", " ") ?: ""

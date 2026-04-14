@@ -18,11 +18,12 @@ class MainViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<MainState>(MainState.Loading)
     val state: StateFlow<MainState> = _state.asStateFlow()
-
     private var allPokemons: List<Pokemon> = emptyList()
     private var currentOffset = 0
     private var isLoading = false
+
     private var currentQuery = ""
+    private var currentTypeFilter: String? = null
 
     init {
         loadInitialPokemon()
@@ -34,7 +35,7 @@ class MainViewModel @Inject constructor(
             try {
                 val pokemons = repository.getPokemonList(limit = 20, offset = currentOffset)
                 allPokemons = pokemons
-                _state.value = MainState.Success(pokemons)
+                applyFiltersAndEmit()
             } catch (e: Exception) {
                 _state.value = MainState.Error(e.message ?: "Error desconocido")
             }
@@ -42,7 +43,7 @@ class MainViewModel @Inject constructor(
     }
 
     private fun loadMorePokemon() {
-        if (isLoading || currentQuery.isNotBlank()) return
+        if (isLoading || currentQuery.isNotBlank() || currentTypeFilter != null) return
 
         viewModelScope.launch {
             isLoading = true
@@ -50,9 +51,8 @@ class MainViewModel @Inject constructor(
                 currentOffset += 20
                 val newPokemons = repository.getPokemonList(limit = 20, offset = currentOffset)
                 allPokemons = allPokemons + newPokemons
-                _state.value = MainState.Success(allPokemons)
+                applyFiltersAndEmit()
             } catch (e: Exception) {
-
             } finally {
                 isLoading = false
             }
@@ -61,21 +61,72 @@ class MainViewModel @Inject constructor(
 
     fun handleIntent(intent: MainIntent) {
         when (intent) {
-            is MainIntent.LoadMore -> {
-                loadMorePokemon()
-            }
+            is MainIntent.LoadMore -> loadMorePokemon()
             is MainIntent.Search -> {
                 currentQuery = intent.query
-                if (currentQuery.isBlank()) {
-                    _state.value = MainState.Success(allPokemons)
-                } else {
-                    val filteredList = allPokemons.filter { pokemon ->
-                        pokemon.name.contains(currentQuery, ignoreCase = true) ||
-                                pokemon.types.any { type -> type.contains(currentQuery, ignoreCase = true) }
+                if (currentTypeFilter != null) {
+                    val currentState = _state.value
+                    if (currentState is MainState.Success) {
+                        val filteredList = currentState.pokemonList.filter {
+                            it.name.contains(currentQuery, ignoreCase = true)
+                        }
+                        _state.value = currentState.copy(pokemonList = filteredList)
                     }
-                    _state.value = MainState.Success(filteredList)
+                } else {
+                    applyFiltersAndEmit()
+                }
+            }
+            is MainIntent.FilterType -> {
+                currentTypeFilter = intent.type
+                if (intent.type == null) {
+                    applyFiltersAndEmit()
+                } else {
+                    fetchPokemonsByType(intent.type)
                 }
             }
         }
+    }
+
+    private fun fetchPokemonsByType(type: String) {
+        viewModelScope.launch {
+            _state.value = MainState.Loading
+            try {
+                val pokemonsByType = repository.getPokemonsByType(type)
+
+                var result = pokemonsByType
+                if (currentQuery.isNotBlank()) {
+                    result = result.filter {
+                        it.name.contains(currentQuery, ignoreCase = true)
+                    }
+                }
+
+                val availableTypes = allPokemons.flatMap { it.types }.distinct()
+
+                _state.value = MainState.Success(
+                    pokemonList = result,
+                    availableTypes = availableTypes,
+                    selectedType = currentTypeFilter
+                )
+            } catch (e: Exception) {
+                _state.value = MainState.Error(e.message ?: "Error al cargar tipos")
+            }
+        }
+    }
+
+    private fun applyFiltersAndEmit() {
+        val availableTypes = allPokemons.flatMap { it.types }.distinct()
+        var result = allPokemons
+
+        if (currentQuery.isNotBlank()) {
+            result = result.filter {
+                it.name.contains(currentQuery, ignoreCase = true)
+            }
+        }
+
+        _state.value = MainState.Success(
+            pokemonList = result,
+            availableTypes = availableTypes,
+            selectedType = null
+        )
     }
 }

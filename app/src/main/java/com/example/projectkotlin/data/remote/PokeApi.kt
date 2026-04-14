@@ -11,12 +11,16 @@ interface PokeApi {
         @Query("offset") offset: Int
     ): PokemonListResponse
 
-    @GET("pokemon/{name}")
-    suspend fun getPokemonDetail(@Path("name") name: String): PokemonDetailResponse
-
     @GET("pokemon/{id}")
-    suspend fun getPokemonDetailById(@Path("id") id: Int): PokemonDetailResponse
+    suspend fun getPokemonDetail(
+        @Path("id") id: String
+    ): PokemonDetailResponse
 
     @GET("pokemon-species/{id}")
-    suspend fun getPokemonSpecies(@Path("id") id: Int): PokemonSpeciesResponse
+    suspend fun getPokemonSpecies(
+        @Path("id") id: String
+    ): PokemonSpeciesResponse
+
+    @GET("type/{type}")
+    suspend fun getPokemonsByType(@Path("type") type: String): TypeResponse
 }
