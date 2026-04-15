@@ -7,7 +7,7 @@ sealed class MainState {
     data class Success(
         val pokemonList: List<Pokemon>,
         val availableTypes: List<String> = emptyList(),
-        val selectedType: String? = null
+        val selectedTypes: Set<String> = emptySet()
     ) : MainState()
     data class Error(val message: String) : MainState()
 }
@@ -15,5 +15,5 @@ sealed class MainState {
 sealed class MainIntent {
     object LoadMore : MainIntent()
     data class Search(val query: String) : MainIntent()
-    data class FilterType(val type: String?) : MainIntent()
+    data class ToggleType(val type: String?) : MainIntent()
 }

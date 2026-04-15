@@ -18,12 +18,19 @@ class MainViewModel @Inject constructor(
 
     private val _state = MutableStateFlow<MainState>(MainState.Loading)
     val state: StateFlow<MainState> = _state.asStateFlow()
+
     private var allPokemons: List<Pokemon> = emptyList()
     private var currentOffset = 0
     private var isLoading = false
 
     private var currentQuery = ""
-    private var currentTypeFilter: String? = null
+    private var currentTypeFilters: MutableSet<String> = linkedSetOf()
+
+    private val allPossibleTypes = listOf(
+        "grass", "fire", "water", "bug", "normal", "poison",
+        "electric", "ground", "fairy", "fighting", "psychic",
+        "rock", "ghost", "ice", "dragon", "dark", "steel", "flying"
+    )
 
     init {
         loadInitialPokemon()
@@ -43,7 +50,7 @@ class MainViewModel @Inject constructor(
     }
 
     private fun loadMorePokemon() {
-        if (isLoading || currentQuery.isNotBlank() || currentTypeFilter != null) return
+        if (isLoading || currentQuery.isNotBlank() || currentTypeFilters.isNotEmpty()) return
 
         viewModelScope.launch {
             isLoading = true
@@ -62,60 +69,41 @@ class MainViewModel @Inject constructor(
     fun handleIntent(intent: MainIntent) {
         when (intent) {
             is MainIntent.LoadMore -> loadMorePokemon()
+
             is MainIntent.Search -> {
                 currentQuery = intent.query
-                if (currentTypeFilter != null) {
-                    val currentState = _state.value
-                    if (currentState is MainState.Success) {
-                        val filteredList = currentState.pokemonList.filter {
-                            it.name.contains(currentQuery, ignoreCase = true)
-                        }
-                        _state.value = currentState.copy(pokemonList = filteredList)
-                    }
-                } else {
-                    applyFiltersAndEmit()
-                }
+                applyFiltersAndEmit()
             }
-            is MainIntent.FilterType -> {
-                currentTypeFilter = intent.type
+
+            is MainIntent.ToggleType -> {
                 if (intent.type == null) {
-                    applyFiltersAndEmit()
+                    currentTypeFilters.clear()
                 } else {
-                    fetchPokemonsByType(intent.type)
-                }
-            }
-        }
-    }
+                    if (currentTypeFilters.contains(intent.type)) { currentTypeFilters.remove(intent.type)
+                    } else {
 
-    private fun fetchPokemonsByType(type: String) {
-        viewModelScope.launch {
-            _state.value = MainState.Loading
-            try {
-                val pokemonsByType = repository.getPokemonsByType(type)
+                        if (currentTypeFilters.size >= 2) {
 
-                var result = pokemonsByType
-                if (currentQuery.isNotBlank()) {
-                    result = result.filter {
-                        it.name.contains(currentQuery, ignoreCase = true)
+                            val oldestType = currentTypeFilters.first()
+                            currentTypeFilters.remove(oldestType)
+                        }
+
+                        currentTypeFilters.add(intent.type)
                     }
                 }
-
-                val availableTypes = allPokemons.flatMap { it.types }.distinct()
-
-                _state.value = MainState.Success(
-                    pokemonList = result,
-                    availableTypes = availableTypes,
-                    selectedType = currentTypeFilter
-                )
-            } catch (e: Exception) {
-                _state.value = MainState.Error(e.message ?: "Error al cargar tipos")
+                applyFiltersAndEmit()
             }
         }
     }
 
     private fun applyFiltersAndEmit() {
-        val availableTypes = allPokemons.flatMap { it.types }.distinct()
         var result = allPokemons
+
+        if (currentTypeFilters.isNotEmpty()) {
+            result = result.filter { pokemon ->
+                pokemon.types.containsAll(currentTypeFilters)
+            }
+        }
 
         if (currentQuery.isNotBlank()) {
             result = result.filter {
@@ -125,8 +113,8 @@ class MainViewModel @Inject constructor(
 
         _state.value = MainState.Success(
             pokemonList = result,
-            availableTypes = availableTypes,
-            selectedType = null
+            availableTypes = allPossibleTypes,
+            selectedTypes = currentTypeFilters.toSet()
         )
     }
 }

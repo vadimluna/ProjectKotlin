@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +23,7 @@ fun SearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     availableTypes: List<String>,
-    selectedType: String?,
+    selectedTypes: Set<String>,
     onTypeSelect: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -48,7 +49,7 @@ fun SearchBar(
                     value = query,
                     onValueChange = onQueryChange,
                     placeholder = { Text("Buscar por nombre...") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
@@ -57,11 +58,23 @@ fun SearchBar(
                     ),
                     singleLine = true
                 )
+                if (isFocused) {
+                    IconButton(onClick = { focusManager.clearFocus() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.Gray)
+                    }
+                }
             }
 
             AnimatedVisibility(visible = isFocused) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Selecciona un tipo:", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Selecciona tipos (se cierra al elegir 2):", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
 
                     val allOptions = listOf(null) + availableTypes
@@ -71,25 +84,41 @@ fun SearchBar(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             row.forEach { type ->
+                                val isSelected = if (type == null) selectedTypes.isEmpty() else selectedTypes.contains(type)
+                                val baseColor = getTypeColor(type ?: "")
+
                                 Surface(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clickable {
                                             onTypeSelect(type)
-                                            focusManager.clearFocus()
+
+                                            val willHaveTwo = !isSelected && selectedTypes.size == 1
+                                            if (type == null || willHaveTwo) {
+                                                focusManager.clearFocus()
+                                            }
                                         },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (selectedType == type) getTypeColor(type ?: "") else getTypeColor(type ?: "").copy(alpha = 0.2f),
-                                    border = if (selectedType == type) null else androidx.compose.foundation.BorderStroke(1.dp, getTypeColor(type ?: ""))
+                                    color = if (isSelected) baseColor else baseColor.copy(alpha = 0.2f),
+                                    border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, baseColor)
                                 ) {
-                                    Text(
-                                        text = type?.replaceFirstChar { it.uppercase() } ?: "Todos",
+                                    Row(
                                         modifier = Modifier.padding(vertical = 10.dp),
-                                        textAlign = TextAlign.Center,
-                                        color = if (selectedType == type) Color.White else getTypeColor(type ?: ""),
-                                        fontSize = 12.sp,
-                                        style = MaterialTheme.typography.labelMedium
-                                    )
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = type?.replaceFirstChar { it.uppercase() } ?: "Todos",
+                                            textAlign = TextAlign.Center,
+                                            color = if (isSelected) Color.White else baseColor,
+                                            fontSize = 11.sp,
+                                            style = MaterialTheme.typography.labelMedium
+                                        )
+                                        if (type != null && isSelected) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                                        }
+                                    }
                                 }
                             }
                             if (row.size < 3) {

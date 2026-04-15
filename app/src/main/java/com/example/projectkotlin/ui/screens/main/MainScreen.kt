@@ -1,15 +1,20 @@
 package com.example.projectkotlin.ui.screens.main
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.projectkotlin.ui.components.PokemonCard
 import com.example.projectkotlin.ui.components.SearchBar
@@ -25,7 +30,7 @@ fun MainScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         val availableTypes = if (state is MainState.Success) (state as MainState.Success).availableTypes else emptyList()
-        val selectedType = if (state is MainState.Success) (state as MainState.Success).selectedType else null
+        val selectedTypes = if (state is MainState.Success) (state as MainState.Success).selectedTypes else emptySet()
 
         SearchBar(
             query = searchQuery,
@@ -34,34 +39,77 @@ fun MainScreen(
                 viewModel.handleIntent(MainIntent.Search(it))
             },
             availableTypes = availableTypes,
-            selectedType = selectedType,
+            selectedTypes = selectedTypes,
             onTypeSelect = { type ->
-                viewModel.handleIntent(MainIntent.FilterType(type))
+                viewModel.handleIntent(MainIntent.ToggleType(type))
             }
         )
 
         when (val currentState = state) {
             is MainState.Loading -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
             is MainState.Success -> {
-                LazyColumn(state = listState) {
-                    items(currentState.pokemonList) { pokemon ->
-                        PokemonCard(
-                            pokemon = pokemon,
-                            onClick = { onPokemonClick(pokemon.id) }
+
+                if (currentState.pokemonList.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "(X_X)",
+                            fontSize = 48.sp,
+                            color = Color.LightGray,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Text(
+                            text = "No se ha encontrado ningún Pokémon.",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Prueba a buscar con otro nombre, quita algunos filtros, o carga más Pokémon en la lista principal.",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
                         )
                     }
-                }
-                LaunchedEffect(listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index) {
-                    val lastIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                    if (lastIndex >= currentState.pokemonList.size - 1 && currentState.pokemonList.isNotEmpty()) {
-                        viewModel.handleIntent(MainIntent.LoadMore)
+                } else {
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        items(currentState.pokemonList) { pokemon ->
+                            PokemonCard(
+                                pokemon = pokemon,
+                                onClick = { onPokemonClick(pokemon.id) }
+                            )
+                        }
+
+
+                        if (searchQuery.isBlank() && selectedTypes.isEmpty()) {
+                            item {
+                                Button(
+                                    onClick = { viewModel.handleIntent(MainIntent.LoadMore) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text(text = "Cargar 20 Pokémon más")
+                                }
+                            }
+                        }
                     }
                 }
             }
             is MainState.Error -> {
-                Text(text = currentState.message, modifier = Modifier.align(Alignment.CenterHorizontally))
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = currentState.message, color = Color.Red)
+                }
             }
         }
     }
