@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+// IMPORTAMOS EL NUEVO ARCHIVO DE TIPOS
+import com.example.projectkotlin.ui.types.getTypeUIInfo
 
 @Composable
 fun SearchBar(
@@ -85,7 +87,9 @@ fun SearchBar(
                         ) {
                             row.forEach { type ->
                                 val isSelected = if (type == null) selectedTypes.isEmpty() else selectedTypes.contains(type)
-                                val baseColor = getTypeColor(type ?: "")
+                                val typeInfo = getTypeUIInfo(type)
+                                val baseColor = typeInfo.color
+                                val symbol = typeInfo.symbol
 
                                 Surface(
                                     modifier = Modifier
@@ -107,8 +111,9 @@ fun SearchBar(
                                         horizontalArrangement = Arrangement.Center,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+
                                         Text(
-                                            text = type?.replaceFirstChar { it.uppercase() } ?: "Todos",
+                                            text = "$symbol ${type?.replaceFirstChar { it.uppercase() } ?: "Todos"}",
                                             textAlign = TextAlign.Center,
                                             color = if (isSelected) Color.White else baseColor,
                                             fontSize = 11.sp,
@@ -129,29 +134,5 @@ fun SearchBar(
                 }
             }
         }
-    }
-}
-
-fun getTypeColor(type: String): Color {
-    return when (type.lowercase()) {
-        "grass", "planta" -> Color(0xFF7AC74C)
-        "fire", "fuego" -> Color(0xFFEE8130)
-        "water", "agua" -> Color(0xFF6390F0)
-        "bug", "bicho" -> Color(0xFFA6B91A)
-        "normal" -> Color(0xFFA8A77A)
-        "poison", "veneno" -> Color(0xFFA33EA1)
-        "electric", "electrico" -> Color(0xFFF7D02C)
-        "ground", "tierra" -> Color(0xFFE2BF65)
-        "fairy", "hada" -> Color(0xFFD685AD)
-        "fighting", "lucha" -> Color(0xFFC22E28)
-        "psychic", "psiquico" -> Color(0xFFF95587)
-        "rock", "roca" -> Color(0xFFB6A136)
-        "ghost", "fantasma" -> Color(0xFF735797)
-        "ice", "hielo" -> Color(0xFF96D9D6)
-        "dragon", "dragon" -> Color(0xFF6F35FC)
-        "dark", "siniestro" -> Color(0xFF705746)
-        "steel", "acero" -> Color(0xFFB7B7CE)
-        "flying", "volador" -> Color(0xFFA98FF0)
-        else -> Color.DarkGray
     }
 }
