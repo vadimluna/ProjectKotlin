@@ -89,7 +89,7 @@ class MainViewModel @Inject constructor(
         val s = sort ?: current?.sortAlphabetically ?: false
 
         var filtered = allPokemon.filter { it.name.contains(q, ignoreCase = true) }
-        
+
         if (types.isNotEmpty()) {
             filtered = filtered.filter { pokemon ->
                 pokemon.types.any { it in types }

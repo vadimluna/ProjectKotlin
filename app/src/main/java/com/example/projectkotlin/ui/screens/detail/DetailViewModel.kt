@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.io.IOException
 import javax.inject.Inject
 
 @HiltViewModel
@@ -16,29 +15,17 @@ class DetailViewModel @Inject constructor(
     private val repository: PokemonRepository
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow<DetailState>(DetailState.Idle)
+    private val _state = MutableStateFlow<DetailState>(DetailState.Loading)
     val state: StateFlow<DetailState> = _state.asStateFlow()
 
-    fun processIntent(intent: DetailIntent) {
-        when (intent) {
-            is DetailIntent.LoadPokemonDetail -> loadPokemonDetail(intent.pokemonId)
-        }
-    }
-
-    private fun loadPokemonDetail(id: Int) {
+    fun loadPokemon(id: Int) {
         viewModelScope.launch {
             _state.value = DetailState.Loading
             try {
                 val pokemon = repository.getPokemonDetail(id)
-                val description = repository.getPokemonDescription(id)
-                _state.value = DetailState.Success(pokemon.copy(description = description))
-            } catch (e: IOException) {
-                _state.value = DetailState.Error(DetailError.NetworkError)
+                _state.value = DetailState.Success(pokemon)
             } catch (e: Exception) {
-                val message = e.message ?: "Error desconocido"
-                val error = if (message.contains("404")) DetailError.NotFound
-                else DetailError.Unknown(message)
-                _state.value = DetailState.Error(error)
+                _state.value = DetailState.Error(DetailError.Unknown(e.message ?: "Error al cargar el Pokémon"))
             }
         }
     }
