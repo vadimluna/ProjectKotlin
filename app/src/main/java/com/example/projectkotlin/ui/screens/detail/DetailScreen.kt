@@ -13,7 +13,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.projectkotlin.domain.model.Pokemon
-
+import com.example.projectkotlin.util.getStatSymbol
+import com.example.projectkotlin.util.getStatSymbol
+import com.example.projectkotlin.util.formatHeight
+import com.example.projectkotlin.util.formatWeight
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
@@ -46,7 +49,6 @@ fun DetailScreen(
         ) {
             when (val currentState = state) {
                 is DetailState.Idle -> {
-                    // Do nothing
                 }
                 is DetailState.Loading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -112,11 +114,11 @@ fun PokemonDetailContent(pokemon: Pokemon) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "Altura", style = MaterialTheme.typography.titleMedium)
-                Text(text = "${pokemon.height / 10.0} m")
+                Text(text = formatHeight(pokemon.height))
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "Peso", style = MaterialTheme.typography.titleMedium)
-                Text(text = "${pokemon.weight / 10.0} kg")
+                Text(text = formatWeight(pokemon.weight))
             }
         }
 
@@ -127,18 +129,36 @@ fun PokemonDetailContent(pokemon: Pokemon) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = "Estadísticas Básicas", style = MaterialTheme.typography.titleLarge)
+        Text(
+            text = "Estadísticas Básicas",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
         pokemon.stats.forEach { stat ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = stat.name.uppercase())
-                Text(text = stat.value.toString(), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text = "${getStatSymbol(stat.name)} ${stat.name.uppercase()}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Text(
+                    text = stat.value.toString(),
+                    style = MaterialTheme.typography.labelLarge
+                )
             }
+
             LinearProgressIndicator(
                 progress = stat.value / 100f,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
     }
