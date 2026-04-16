@@ -7,22 +7,62 @@ import com.example.projectkotlin.domain.model.EvolutionStep
 import com.example.projectkotlin.domain.model.Pokemon
 import com.example.projectkotlin.domain.model.PokemonRepository
 import com.example.projectkotlin.domain.model.PokemonStat
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
 
 class PokemonRepositoryImpl @Inject constructor(
     private val api: PokeApi
 ) : PokemonRepository {
 
+    override suspend fun getPokemonList(limit: Int, offset: Int): List<Pokemon> {
+        val response = api.getPokemonList(limit, offset)
+
+        return coroutineScope {
+            response.results.map { result ->
+                async {
+                    val id = result.url.split("/").dropLast(1).last().toInt()
+                    try {
+                        val detail = api.getPokemonDetail(id.toString())
+                        mapBasicInfoToDomain(detail)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        }
+    }
+
     override suspend fun getPokemonDetail(id: Int): Pokemon {
-        // 1. Obtener detalle básico (stats, tipos)
         val detail = api.getPokemonDetail(id.toString())
-
-
         val species = api.getPokemonSpecies(id.toString())
-
         val evolutionData = api.getEvolutionChain(species.evolutionChain.url)
 
-        return mapToDomain(detail, evolutionData.chain)
+
+        val description = species.flavorTextEntries
+            .find { it.language.name == "es" }
+            ?.flavorText
+            ?.replace("\n", " ")
+            ?.replace("\r", " ")
+            ?: "No hay descripción disponible para este Pokémon."
+
+        val pokemon = mapToDomain(detail, evolutionData.chain)
+        return pokemon.copy(description = description)
+    }
+
+    private fun mapBasicInfoToDomain(response: PokemonDetailResponse): Pokemon {
+        return Pokemon(
+            id = response.id,
+            name = response.name,
+            imageUrl = response.sprites.other?.officialArtwork?.frontDefault ?: "",
+            types = response.types.map { it.type.name },
+            weight = response.weight,
+            height = response.height,
+            stats = response.stats.map {
+                PokemonStat(name = it.stat.name, value = it.baseStat)
+            }
+        )
     }
 
     private suspend fun mapToDomain(
@@ -30,7 +70,6 @@ class PokemonRepositoryImpl @Inject constructor(
         evolutionChain: ChainLink? = null
     ): Pokemon {
         val evolutionSteps = mutableListOf<EvolutionStep>()
-
 
         var currentChain = evolutionChain
         while (currentChain != null) {
@@ -45,22 +84,10 @@ class PokemonRepositoryImpl @Inject constructor(
             currentChain = currentChain.evolvesTo.firstOrNull()
         }
 
-        return Pokemon(
-            id = response.id,
-            name = response.name,
-            imageUrl = response.sprites.other?.officialArtwork?.frontDefault ?: "",
-            types = response.types.map { it.type.name },
-            weight = response.weight,
-            height = response.height,
-            stats = response.stats.map {
-                PokemonStat(name = it.stat.name, value = it.baseStat)
-            },
-            evolutionChain = evolutionSteps
-        )
+        val pokemon = mapBasicInfoToDomain(response)
+        return pokemon.copy(evolutionChain = evolutionSteps)
     }
 
-
-    override suspend fun getPokemonList(limit: Int, offset: Int): List<Pokemon> = emptyList()
     override suspend fun getPokemonsByType(type: String): List<Pokemon> = emptyList()
     override suspend fun getPokemonDescription(id: Int): String = ""
 }

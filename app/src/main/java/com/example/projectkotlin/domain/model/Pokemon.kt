@@ -8,7 +8,8 @@ data class Pokemon(
     val weight: Int,
     val height: Int,
     val stats: List<PokemonStat> = emptyList(),
-    val evolutionChain: List<EvolutionStep> = emptyList()
+    val evolutionChain: List<EvolutionStep> = emptyList(),
+    val description: String = ""
 )
 
 data class PokemonStat(

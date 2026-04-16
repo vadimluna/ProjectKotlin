@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.projectkotlin.domain.model.PokemonStat
+import com.example.projectkotlin.util.getStatSymbol
 
 @Composable
 fun PokemonStatItem(stat: PokemonStat, color: Color) {
@@ -32,9 +33,11 @@ fun PokemonStatItem(stat: PokemonStat, color: Color) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val symbol = getStatSymbol(stat.name)
+
         Text(
-            text = stat.name.uppercase().take(3),
-            modifier = Modifier.width(40.dp),
+            text = "$symbol ${stat.name.uppercase().take(3)}",
+            modifier = Modifier.width(65.dp),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold
         )
@@ -42,7 +45,7 @@ fun PokemonStatItem(stat: PokemonStat, color: Color) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(10.dp)
+                .height(12.dp)
                 .clip(RoundedCornerShape(10.dp))
                 .background(Color.LightGray.copy(alpha = 0.2f))
         ) {
@@ -58,7 +61,8 @@ fun PokemonStatItem(stat: PokemonStat, color: Color) {
         Text(
             text = stat.value.toString(),
             modifier = Modifier.width(35.dp).padding(start = 8.dp),
-            fontSize = 12.sp
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
         )
     }
 }
