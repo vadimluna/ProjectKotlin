@@ -25,6 +25,8 @@ class MainViewModel @Inject constructor(
 
     private var currentQuery = ""
     private var currentTypeFilters: MutableSet<String> = linkedSetOf()
+    private var isFireHidden = false
+    private var isSortedAlphabetically = false
 
     private val allPossibleTypes = listOf(
         "grass", "fire", "water", "bug", "normal", "poison",
@@ -79,18 +81,26 @@ class MainViewModel @Inject constructor(
                 if (intent.type == null) {
                     currentTypeFilters.clear()
                 } else {
-                    if (currentTypeFilters.contains(intent.type)) { currentTypeFilters.remove(intent.type)
+                    if (currentTypeFilters.contains(intent.type)) {
+                        currentTypeFilters.remove(intent.type)
                     } else {
-
                         if (currentTypeFilters.size >= 2) {
-
                             val oldestType = currentTypeFilters.first()
                             currentTypeFilters.remove(oldestType)
                         }
-
                         currentTypeFilters.add(intent.type)
                     }
                 }
+                applyFiltersAndEmit()
+            }
+
+            is MainIntent.ToggleHideFire -> {
+                isFireHidden = intent.hide
+                applyFiltersAndEmit()
+            }
+
+            is MainIntent.ToggleSort -> {
+                isSortedAlphabetically = intent.sort
                 applyFiltersAndEmit()
             }
         }
@@ -111,10 +121,20 @@ class MainViewModel @Inject constructor(
             }
         }
 
+        if (isFireHidden) {
+            result = result.filter { !it.types.contains("fire") && !it.types.contains("fuego") }
+        }
+
+        if (isSortedAlphabetically) {
+            result = result.sortedBy { it.name }
+        }
+
         _state.value = MainState.Success(
             pokemonList = result,
             availableTypes = allPossibleTypes,
-            selectedTypes = currentTypeFilters.toSet()
+            selectedTypes = currentTypeFilters.toSet(),
+            hideFireType = isFireHidden,
+            sortAlphabetically = isSortedAlphabetically
         )
     }
 }
