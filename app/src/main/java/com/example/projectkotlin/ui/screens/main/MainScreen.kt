@@ -7,22 +7,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,7 +32,6 @@ fun MainScreen(
     var isMenuExpanded by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-
         Image(
             painter = painterResource(id = R.drawable.main_background),
             contentDescription = null,
@@ -50,8 +40,9 @@ fun MainScreen(
         )
 
         Column(modifier = Modifier.fillMaxSize()) {
-            val availableTypes = if (state is MainState.Success) (state as MainState.Success).availableTypes else emptyList()
-            val selectedTypes = if (state is MainState.Success) (state as MainState.Success).selectedTypes else emptySet()
+            val currentState = state as? MainState.Success
+            val availableTypes = currentState?.availableTypes ?: emptyList()
+            val selectedTypes = currentState?.selectedTypes ?: emptySet()
 
             SearchBar(
                 query = searchQuery,
@@ -66,59 +57,29 @@ fun MainScreen(
                 }
             )
 
-            when (val currentState = state) {
+            when (val s = state) {
                 is MainState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 is MainState.Success -> {
-                    if (currentState.pokemonList.isEmpty()) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = "(X_X)",
-                                fontSize = 48.sp,
-                                color = Color.White,
-                                modifier = Modifier.padding(bottom = 16.dp)
-                            )
-                            Text(
-                                text = "No se ha encontrado ningún Pokémon.",
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Prueba a buscar con otro nombre, quita algunos filtros, o carga más Pokémon en la lista principal.",
-                                color = Color.LightGray,
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center
-                            )
+                    if (s.pokemonList.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No se encontraron Pokémon", color = Color.White)
                         }
                     } else {
                         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                            items(currentState.pokemonList) { pokemon ->
-                                PokemonCard(
-                                    pokemon = pokemon,
-                                    onClick = { onPokemonClick(pokemon.id) }
-                                )
+                            items(s.pokemonList) { pokemon ->
+                                PokemonCard(pokemon = pokemon, onClick = { onPokemonClick(pokemon.id) })
                             }
-
                             if (searchQuery.isBlank() && selectedTypes.isEmpty()) {
                                 item {
                                     Button(
                                         onClick = { viewModel.handleIntent(MainIntent.LoadMore) },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp)
+                                        modifier = Modifier.fillMaxWidth().padding(16.dp)
                                     ) {
-                                        Text(text = "Cargar 20 Pokémon más")
+                                        Text("Cargar más")
                                     }
                                 }
                             }
@@ -127,17 +88,14 @@ fun MainScreen(
                 }
                 is MainState.Error -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = currentState.message, color = Color.Red)
+                        Text(s.message, color = Color.Red)
                     }
                 }
             }
         }
 
         Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-                .padding(bottom = 32.dp)
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = 32.dp)
         ) {
             FloatingActionButton(
                 onClick = { isMenuExpanded = !isMenuExpanded },
@@ -151,44 +109,32 @@ fun MainScreen(
                 expanded = isMenuExpanded,
                 onDismissRequest = { isMenuExpanded = false }
             ) {
-                val currentState = state as? MainState.Success
-                val hideFire = currentState?.hideFireType == true
-                val sortAlpha = currentState?.sortAlphabetically == true
+                val current = state as? MainState.Success
 
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Ocultar tipo fuego", modifier = Modifier.weight(1f))
-                            Spacer(modifier = Modifier.width(8.dp))
                             Switch(
-                                checked = hideFire,
-                                onCheckedChange = {
-                                    viewModel.handleIntent(MainIntent.ToggleHideFire(it))
-                                }
+                                checked = current?.hideFireType == true,
+                                onCheckedChange = { viewModel.handleIntent(MainIntent.ToggleHideFire(it)) }
                             )
                         }
                     },
-                    onClick = {
-                        viewModel.handleIntent(MainIntent.ToggleHideFire(!hideFire))
-                    }
+                    onClick = { viewModel.handleIntent(MainIntent.ToggleHideFire(!(current?.hideFireType ?: false))) }
                 )
 
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Ordenar A-Z", modifier = Modifier.weight(1f))
-                            Spacer(modifier = Modifier.width(8.dp))
                             Switch(
-                                checked = sortAlpha,
-                                onCheckedChange = {
-                                    viewModel.handleIntent(MainIntent.ToggleSort(it))
-                                }
+                                checked = current?.sortAlphabetically == true,
+                                onCheckedChange = { viewModel.handleIntent(MainIntent.ToggleSort(it)) }
                             )
                         }
                     },
-                    onClick = {
-                        viewModel.handleIntent(MainIntent.ToggleSort(!sortAlpha))
-                    }
+                    onClick = { viewModel.handleIntent(MainIntent.ToggleSort(!(current?.sortAlphabetically ?: false))) }
                 )
             }
         }

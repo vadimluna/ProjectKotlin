@@ -45,11 +45,13 @@ fun PokeAppNavigation() {
 
 fun NavGraphBuilder.splashGraph(navController: NavHostController) {
     composable(NavRoutes.Splash.route) {
-        SplashScreen(onNavigateToMain = {
-            navController.navigate(NavRoutes.Main.route) {
-                popUpTo(NavRoutes.Splash.route) { inclusive = true }
+        SplashScreen(
+            onNavigateToMain = {
+                navController.navigate(NavRoutes.Main.route) {
+                    popUpTo(NavRoutes.Splash.route) { inclusive = true }
+                }
             }
-        })
+        )
     }
 }
 

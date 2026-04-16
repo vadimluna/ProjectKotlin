@@ -1,14 +1,10 @@
 package com.example.projectkotlin.data.repository
 
-import android.util.Log
 import com.example.projectkotlin.domain.model.Pokemon
 import com.example.projectkotlin.domain.model.PokemonRepository
 import com.example.projectkotlin.domain.model.PokemonStat
 import com.example.projectkotlin.data.remote.PokeApi
 import com.example.projectkotlin.data.remote.PokemonDetailResponse
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import javax.inject.Inject
 
 class PokemonRepositoryImpl @Inject constructor(
@@ -16,31 +12,39 @@ class PokemonRepositoryImpl @Inject constructor(
 ) : PokemonRepository {
 
     override suspend fun getPokemonList(limit: Int, offset: Int): List<Pokemon> {
-        Log.d("PokeDebug", "1. Pidiendo lista base a la API...")
-        val response = api.getPokemonList(limit, offset)
-        Log.d("PokeDebug", "2. Lista obtenida con ${response.results.size} pokemons.")
+        return try {
+            val response = api.getPokemonList(limit, offset)
+            val pokemons = mutableListOf<Pokemon>()
 
-        return coroutineScope {
-            response.results.map { resource ->
-                async {
+            for (resource in response.results) {
+                try {
                     val detail = api.getPokemonDetail(resource.name)
-                    mapToDomain(detail)
+                    pokemons.add(mapToDomain(detail))
+                } catch (e: Exception) {
                 }
-            }.awaitAll()
+            }
+            pokemons
+        } catch (e: Exception) {
+            emptyList()
         }
     }
+
     override suspend fun getPokemonsByType(type: String): List<Pokemon> {
-        val response = api.getPokemonsByType(type.lowercase())
+        return try {
+            val response = api.getPokemonsByType(type.lowercase())
+            val pokemonListToFetch = response.pokemon.take(50)
+            val pokemons = mutableListOf<Pokemon>()
 
-        val pokemonListToFetch = response.pokemon.take(50)
-
-        return coroutineScope {
-            pokemonListToFetch.map { typePokemon ->
-                async {
+            for (typePokemon in pokemonListToFetch) {
+                try {
                     val detail = api.getPokemonDetail(typePokemon.pokemon.name)
-                    mapToDomain(detail)
+                    pokemons.add(mapToDomain(detail))
+                } catch (e: Exception) {
                 }
-            }.awaitAll()
+            }
+            pokemons
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 

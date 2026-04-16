@@ -5,11 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.example.projectkotlin.domain.model.Pokemon
 import com.example.projectkotlin.domain.model.PokemonRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -19,122 +19,101 @@ class MainViewModel @Inject constructor(
     private val _state = MutableStateFlow<MainState>(MainState.Loading)
     val state: StateFlow<MainState> = _state.asStateFlow()
 
-    private var allPokemons: List<Pokemon> = emptyList()
-    private var currentOffset = 0
-    private var isLoading = false
-
-    private var currentQuery = ""
-    private var currentTypeFilters: MutableSet<String> = linkedSetOf()
-    private var isFireHidden = false
-    private var isSortedAlphabetically = false
-
-    private val allPossibleTypes = listOf(
-        "grass", "fire", "water", "bug", "normal", "poison",
-        "electric", "ground", "fairy", "fighting", "psychic",
-        "rock", "ghost", "ice", "dragon", "dark", "steel", "flying"
-    )
+    private var allPokemon = listOf<Pokemon>()
+    private var currentPage = 0
+    private val pageSize = 20
 
     init {
-        loadInitialPokemon()
-    }
-
-    private fun loadInitialPokemon() {
-        viewModelScope.launch {
-            _state.value = MainState.Loading
-            try {
-                val pokemons = repository.getPokemonList(limit = 20, offset = currentOffset)
-                allPokemons = pokemons
-                applyFiltersAndEmit()
-            } catch (e: Exception) {
-                _state.value = MainState.Error(e.message ?: "Error desconocido")
-            }
-        }
-    }
-
-    private fun loadMorePokemon() {
-        if (isLoading || currentQuery.isNotBlank() || currentTypeFilters.isNotEmpty()) return
-
-        viewModelScope.launch {
-            isLoading = true
-            try {
-                currentOffset += 20
-                val newPokemons = repository.getPokemonList(limit = 20, offset = currentOffset)
-                allPokemons = allPokemons + newPokemons
-                applyFiltersAndEmit()
-            } catch (e: Exception) {
-            } finally {
-                isLoading = false
-            }
-        }
+        loadPokemon()
     }
 
     fun handleIntent(intent: MainIntent) {
         when (intent) {
-            is MainIntent.LoadMore -> loadMorePokemon()
+            is MainIntent.LoadMore -> loadPokemon()
+            is MainIntent.Search -> filterPokemon(intent.query)
+            is MainIntent.ToggleType -> toggleType(intent.type)
+            is MainIntent.ToggleHideFire -> toggleHideFire(intent.hide)
+            is MainIntent.ToggleSort -> toggleSort(intent.sort)
+        }
+    }
 
-            is MainIntent.Search -> {
-                currentQuery = intent.query
-                applyFiltersAndEmit()
-            }
-
-            is MainIntent.ToggleType -> {
-                if (intent.type == null) {
-                    currentTypeFilters.clear()
-                } else {
-                    if (currentTypeFilters.contains(intent.type)) {
-                        currentTypeFilters.remove(intent.type)
-                    } else {
-                        if (currentTypeFilters.size >= 2) {
-                            val oldestType = currentTypeFilters.first()
-                            currentTypeFilters.remove(oldestType)
-                        }
-                        currentTypeFilters.add(intent.type)
-                    }
-                }
-                applyFiltersAndEmit()
-            }
-
-            is MainIntent.ToggleHideFire -> {
-                isFireHidden = intent.hide
-                applyFiltersAndEmit()
-            }
-
-            is MainIntent.ToggleSort -> {
-                isSortedAlphabetically = intent.sort
-                applyFiltersAndEmit()
+    private fun loadPokemon() {
+        viewModelScope.launch {
+            try {
+                val newPokemon = repository.getPokemonList(pageSize, currentPage * pageSize)
+                allPokemon = allPokemon + newPokemon
+                currentPage++
+                updateState()
+            } catch (e: Exception) {
+                _state.value = MainState.Error(e.message ?: "Unknown error")
             }
         }
     }
 
-    private fun applyFiltersAndEmit() {
-        var result = allPokemons
+    private fun filterPokemon(query: String) {
+        updateState(query = query)
+    }
 
-        if (currentTypeFilters.isNotEmpty()) {
-            result = result.filter { pokemon ->
-                pokemon.types.containsAll(currentTypeFilters)
+    private fun toggleType(type: String?) {
+        val current = _state.value as? MainState.Success ?: return
+        val newSelected = if (type == null) {
+            emptySet()
+        } else {
+            if (current.selectedTypes.contains(type)) {
+                current.selectedTypes - type
+            } else {
+                current.selectedTypes + type
+            }
+        }
+        updateState(selectedTypes = newSelected)
+    }
+
+    private fun toggleHideFire(hide: Boolean) {
+        updateState(hideFire = hide)
+    }
+
+    private fun toggleSort(sort: Boolean) {
+        updateState(sort = sort)
+    }
+
+    private fun updateState(
+        query: String? = null,
+        selectedTypes: Set<String>? = null,
+        hideFire: Boolean? = null,
+        sort: Boolean? = null
+    ) {
+        val current = _state.value as? MainState.Success
+        val q = query ?: ""
+        val types = selectedTypes ?: current?.selectedTypes ?: emptySet()
+        val hide = hideFire ?: current?.hideFireType ?: false
+        val s = sort ?: current?.sortAlphabetically ?: false
+
+        var filtered = allPokemon.filter { it.name.contains(q, ignoreCase = true) }
+        
+        if (types.isNotEmpty()) {
+            filtered = filtered.filter { pokemon ->
+                pokemon.types.any { it in types }
             }
         }
 
-        if (currentQuery.isNotBlank()) {
-            result = result.filter {
-                it.name.contains(currentQuery, ignoreCase = true)
+        if (hide) {
+            filtered = filtered.filter { pokemon ->
+                pokemon.types.none { it.equals("fire", ignoreCase = true) }
             }
         }
 
-        if (isFireHidden) {
-            result = result.filter { !it.types.contains("fire") && !it.types.contains("fuego") }
+        if (s) {
+            filtered = filtered.sortedBy { it.name }
         }
 
-        if (isSortedAlphabetically) {
-            result = result.sortedBy { it.name }
-        }
+        val availableTypes = allPokemon.flatMap { it.types }.distinct().sorted()
 
         _state.value = MainState.Success(
-            pokemonList = result,
-            availableTypes = allPossibleTypes,
-            selectedTypes = currentTypeFilters.toSet(),
-            hideFireType = isFireHidden,
-            sortAlphabetically = isSortedAlphabetically
+            pokemonList = filtered,
+            availableTypes = availableTypes,
+            selectedTypes = types,
+            hideFireType = hide,
+            sortAlphabetically = s
         )
     }
 }
